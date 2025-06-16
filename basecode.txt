@@ -1,0 +1,171 @@
+flashcard_tool/
+├── main.py
+├── streamlit_app.py
+├── .env
+├── requirements.txt
+├── utils/
+│   ├── __init__.py
+│   ├── preprocess.py
+│   └── structure.py
+└── .gitignore
+.env never to be pushed in the repo
+HF_TOKEN=your_huggingface_api_key_here
+
+
+###Main.py
+import textwrap
+import re
+from transformers import pipeline
+
+pipe = pipeline("text2text-generation", model="google/flan-t5-base")
+
+def chunk_text(text, max_tokens=450):
+    return textwrap.wrap(text, max_tokens)
+
+def parse_flashcards(output_text):
+    cards = []
+    matches = re.findall(r"Q:\s*(.*?)\nA:\s*(.*?)(?=\nQ:|\Z)", output_text, re.DOTALL)
+    for q, a in matches:
+        if q.strip() and a.strip():
+            cards.append({
+                "question": q.strip(),
+                "answer": a.strip(),
+                "difficulty": "Medium"
+            })
+    return cards
+
+def generate_flashcards(content):
+    if not content.strip():
+        return []
+    
+    chunks = chunk_text(content)
+    flashcards = []
+
+    for chunk in chunks:
+        prompt = (
+            "Create flashcards from the following content.\n"
+            "Format each flashcard as:\n"
+            "Q: Question?\nA: Answer.\n\n"
+            f"{chunk}"
+        )
+        output = pipe(prompt, max_new_tokens=256)[0]["generated_text"]
+        flashcards.extend(parse_flashcards(output))
+    
+    return flashcards
+
+
+
+
+###streamlit_app
+
+
+import streamlit as st
+import os
+import json
+import pandas as pd
+from dotenv import load_dotenv
+from main import generate_flashcards
+from utils.preprocess import extract_content_from_pdf
+from utils.structure import extract_structured_content
+
+load_dotenv()
+
+st.title("📘 Flashcard Generator")
+
+uploaded_file = st.file_uploader("Upload a PDF or TXT file", type=["pdf", "txt"])
+
+if uploaded_file:
+    if uploaded_file.type == "application/pdf":
+        with open("temp.pdf", "wb") as f:
+            f.write(uploaded_file.read())
+        content = extract_content_from_pdf("temp.pdf")
+    else:
+        content = uploaded_file.read().decode("utf-8")
+
+    if content:
+        st.info("Generating flashcards...")
+        structured = extract_structured_content(content)
+        flashcards = []
+
+        for section in structured:
+            section_cards = generate_flashcards(section["content"])
+            for card in section_cards:
+                card["section"] = section["heading"]
+            flashcards.extend(section_cards)
+
+        if flashcards:
+            st.subheader("📝 Edit Flashcards")
+            edited_flashcards = []
+            for i, card in enumerate(flashcards):
+                question = st.text_area(f"Q{i+1}", card["question"])
+                answer = st.text_area(f"A{i+1}", card["answer"])
+                difficulty = st.selectbox(f"Difficulty{i+1}", ["Easy", "Medium", "Hard"], index=1)
+                edited_flashcards.append({
+                    "question": question,
+                    "answer": answer,
+                    "difficulty": difficulty,
+                    "section": card.get("section", "")
+                })
+
+            st.success("✅ Flashcards ready for export.")
+            col1, col2 = st.columns(2)
+
+            with col1:
+                st.download_button("⬇️ JSON", json.dumps(edited_flashcards, indent=2), "flashcards.json", "application/json")
+
+            with col2:
+                df = pd.DataFrame(edited_flashcards)
+                st.download_button("⬇️ CSV", df.to_csv(index=False), "flashcards.csv", "text/csv")
+
+        else:
+            st.error("⚠️ No flashcards could be generated.")
+    else:
+        st.error("❌ Failed to extract content.")
+
+
+
+###utils/preprocess.py
+
+import PyPDF2
+
+def extract_content_from_pdf(pdf_path):
+    text = ""
+    with open(pdf_path, "rb") as f:
+        reader = PyPDF2.PdfReader(f)
+        for page in reader.pages:
+            text += page.extract_text() + "\n"
+    return text.strip()
+
+
+### utils/structure.py
+
+import re
+
+def extract_structured_content(text):
+    sections = []
+    lines = text.splitlines()
+    current_heading = "General"
+    current_content = []
+
+    for line in lines:
+        if re.match(r'^(Chapter|Section|[\d.]+)\s*[:\-]?\s+', line, re.IGNORECASE):
+            if current_content:
+                sections.append({
+                    "heading": current_heading,
+                    "content": "\n".join(current_content).strip()
+                })
+                current_content = []
+            current_heading = line.strip()
+        else:
+            current_content.append(line.strip())
+
+    if current_content:
+        sections.append({
+            "heading": current_heading,
+            "content": "\n".join(current_content).strip()
+        })
+
+    return sections
+###To run streamlit_app
+streamlit run streamlit_app.py
+-------------------------END-------------------------
