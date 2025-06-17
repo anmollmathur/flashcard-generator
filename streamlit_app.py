@@ -8,18 +8,18 @@ import textwrap
 # Load environment variables from .env
 load_dotenv()
 
-# ✅ Cache the model to avoid reloading
+# Cache the model to avoid reloading
 @st.cache_resource
 def load_model():
     return pipeline("text2text-generation", model="google/flan-t5-base")
 
 pipe = load_model()
 
-# ✅ Chunk content to avoid token limit issues
+#  Chunk content to avoid token limit issues
 def chunk_text(text, max_tokens=450):
     return textwrap.wrap(text, max_tokens)
 
-# ✅ Generate flashcards in chunks
+#  Generate flashcards in chunks
 def generate_flashcards(content):
     if not content.strip():
         return "No content provided."
@@ -42,7 +42,7 @@ def generate_flashcards(content):
 
     return "\n\n".join(flashcards)
 
-# ✅ Streamlit UI
+#  Streamlit UI
 st.title("📘 Flashcard Generator")
 
 uploaded_file = st.file_uploader("Upload a PDF or TXT file", type=["pdf", "txt"])
