@@ -402,6 +402,39 @@ python-dotenv
 
 
 
+we can use various trained model in the flashcard generation 
+for example for openai gpt 3.5 model , we have first pay for using this model then
+#(OpenAI) 
+response = openai.ChatCompletion.create(
+    model="gpt-3.5-turbo",
+    messages=[{"role": "user", "content": prompt}],
+)
+
+for example using huggingface models such as Llama-2-7b-chat-hf, mistralai/Mistral-7B-Instruct-v0.1"
+from transformers import AutoTokenizer
+
+tokenizer = AutoTokenizer.from_pretrained(
+    "meta-llama/Llama-2-7b-chat-hf",
+    use_auth_token="your_huggingface_token_here"
+)
+and in cmd pass command to authorize your model access
+huggingface-cli login
+transformers-cli repo info meta-llama/Llama-2-7b-chat-hf
+for example using LLM 
+To run locally:
+
+    Request access here (for weights): https://ai.meta.com/resources/models-and-libraries/llama-downloads/
+
+    Once granted, download the weights and convert them using tools like:
+
+        transformers (from Hugging Face)
+
+        llama.cpp (for CPU inference)
+
+        Text Generation Web UI (GUI for chat-style interaction)
+
+NOTE:- You need to have login credentials for each of the above options 
+
 
 
 
