@@ -4,18 +4,18 @@ import textwrap
 from transformers import pipeline
 from utils.structure import extract_structured_content
 
-# ✅ Load model only once using Streamlit's cache
+#Load model only once using Streamlit's cache
 @st.cache_resource
 def load_model():
     return pipeline("text2text-generation", model="google/flan-t5-base")
 
 pipe = load_model()
 
-# ✅ Chunk text into manageable parts
+#Chunk text into manageable parts
 def chunk_text(text, max_tokens=400):
     return textwrap.wrap(text, max_tokens)
 
-# ✅ Generate flashcards from content
+#Generate flashcards from content
 def generate_flashcards(content):
     if not content.strip():
         return []
@@ -43,7 +43,7 @@ def generate_flashcards(content):
 
     return flashcards
 
-# ✅ Extract Q&A from output text
+#Extract Q&A from output text
 def parse_flashcards(output_text):
     cards = []
     matches = re.findall(r"Q:\s*(.*?)\nA:\s*(.*?)(?=\nQ:|\Z)", output_text, re.DOTALL)
